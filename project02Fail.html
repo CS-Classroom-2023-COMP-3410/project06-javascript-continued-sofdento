@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive To-Do List with Custom Recurring Tasks, Calendar & Task Details</title>
+  <style>
+    /* CSS Variables for color customization. These drive most colors on the page. */
+    :root {
+      --page-bg: #f4f4f4;
+      --container-bg: #fff;
+      --primary: #007bff;
+      --primary-dark: #0056b3;
+      --accent: #28a745;
+      --accent-dark: #218838;
+    }
+    /* Light mode styles using variables */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--page-bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    /* Dark mode overrides */
+    body.dark-mode {
+      background-color: #222;
+      color: #ccc;
+    }
+    body.dark-mode .todo-container {
+      background: #333;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.7);
+    }
+    body.dark-mode #calendar {
+      background: #333;
+    }
+    body.dark-mode #calendar th {
+      background: #444;
+    }
+    .todo-container {
+      background: var(--container-bg);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      width: 400px;
+      position: relative;
+      margin-bottom: 20px;
+      transition: background-color 0.3s;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    /* Settings menu toggle (top left) */
+    .settings-toggle {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 5px 10px;
+      border: none;
+      background-color: var(--primary);
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .settings-toggle:hover {
+      background-color: var(--primary-dark);
+    }
+    /* Settings menu panel */
+    .settings-menu {
+      position: absolute;
+      top: 50px;
+      left: 10px;
+      background: var(--container-bg);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 10px;
+      width: 250px;
+      z-index: 10;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      display: none;
+      transition: background-color 0.3s;
+    }
+    .settings-menu h3 {
+      margin-top: 0;
+      font-size: 1.1em;
+    }
+    /* New: Color Scheme selector */
+    .settings-menu label[for="color-scheme"] {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .settings-menu label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 0.9em;
+    }
+    .settings-menu input[type="color"],
+    .settings-menu input[type="date"],
+    .settings-menu input[type="checkbox"] {
+      margin-bottom: 10px;
+    }
+    .settings-menu select {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .settings-menu button {
+      padding: 5px 10px;
+      border: none;
+      background-color: var(--primary);
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    .settings-menu button:hover {
+      background-color: var(--primary-dark);
+    }
+    /* To-Do list styles */
+    .todo-input {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 10px;
+    }
+    .todo-input input,
+    .todo-input button {
+      padding: 10px;
+      margin-bottom: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .todo-input input {
+      outline: none;
+    }
+    .todo-input button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .todo-input button:hover {
+      background-color: var(--primary-dark);
+    }
+    /* Recurring task options */
+    .recurring-options {
+      display: none;
+      border: 1px dashed #ccc;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    .recurring-options label {
+      display: block;
+      font-size: 0.9em;
+      margin-bottom: 5px;
+    }
+    .recurring-options input#recurring-frequency-days {
+      width: 100%;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    /* Album selection and creation */
+    .album-controls {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 10px;
+    }
+    .album-controls > div {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .album-controls label {
+      margin-right: 5px;
+      font-size: 0.9em;
+    }
+    .album-controls select,
+    .album-controls input {
+      flex: 1;
+      padding: 5px;
+      margin-right: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .album-controls button {
+      padding: 5px 10px;
+      border: none;
+      background-color: var(--accent);
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .album-controls button:hover {
+      background-color: var(--accent-dark);
+    }
+    /* Filters, search and sort */
+    .filter-options {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .filter-options button {
+      border: none;
+      background-color: #ddd;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .filter-options button.active {
+      background-color: var(--primary);
+      color: white;
+    }
+    .album-filter {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+    }
+    .album-filter label {
+      margin-right: 5px;
+      font-size: 0.9em;
+    }
+    .album-filter select {
+      flex: 1;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .search-bar {
+      margin-bottom: 10px;
+      display: block;
+      width: 100%;
+      padding: 8px;
+      font-size: 0.9em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .sort-options {
+      margin-bottom: 10px;
+      display: block;
+      width: 100%;
+      padding: 8px;
+      font-size: 0.9em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    .todo-item {
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      margin-bottom: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: var(--container-bg);
+      cursor: grab;
+    }
+    .todo-item.completed > span {
+      text-decoration: line-through;
+      color: gray;
+    }
+    .todo-item > div.buttons {
+      margin-top: 5px;
+    }
+    .todo-item button {
+      border: none;
+      background: red;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 5px;
+      margin-right: 3px;
+    }
+    .todo-item button.complete {
+      background: green;
+    }
+    .todo-item button.edit {
+      background: orange;
+    }
+    .todo-item:hover button {
+      opacity: 0.8;
+    }
+    .dragging {
+      opacity: 0.5;
+    }
+    .task-album,
+    .task-alarm {
+      font-size: 0.8em;
+      color: #555;
+      margin-top: 3px;
+    }
+    .task-alarm.reminded {
+      color: red;
+      font-weight: bold;
+    }
+    /* Calendar styles */
+    #calendar {
+      width: 90%;
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: var(--container-bg);
+    }
+    #calendar .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    #calendar .calendar-header button {
+      padding: 5px 10px;
+      border: none;
+      background-color: var(--primary);
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #calendar .calendar-header button:hover {
+      background-color: var(--primary-dark);
+    }
+    #calendar table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #calendar th, #calendar td {
+      width: 14.28%;
+      border: 1px solid #ddd;
+      text-align: center;
+      vertical-align: top;
+      padding: 5px;
+      height: 80px;
+      position: relative;
+    }
+    #calendar th {
+      background: var(--primary);
+      color: #fff;
+    }
+    #calendar td.today {
+      background: #ffeb3b;
+    }
+    #calendar .task {
+      display: block;
+      font-size: 0.7em;
+      color: #333;
+      background: #eee;
+      margin: 2px 0;
+      border-radius: 4px;
+      padding: 2px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      cursor: pointer;
+    }
+    #calendar .more-link {
+      font-size: 0.7em;
+      color: blue;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    /* Modal styles for calendar "more..." */
+    #modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    #modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 80%;
+      max-height: 80%;
+      overflow-y: auto;
+    }
+    #modal-close {
+      margin-top: 10px;
+      padding: 5px 10px;
+      border: none;
+      background-color: var(--primary);
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #modal-close:hover {
+      background-color: var(--primary-dark);
+    }
+    /* Modal styles for Task Details (View and Edit Modes) */
+    #task-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 150;
+    }
+    #task-modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 90%;
+      overflow-y: auto;
+    }
+    #task-modal-content label {
+      display: block;
+      margin-top: 10px;
+      font-size: 0.9em;
+    }
+    #task-modal-content input[type="text"],
+    #task-modal-content input[type="datetime-local"],
+    #task-modal-content textarea,
+    #task-modal-content select,
+    #task-modal-content input[type="date"],
+    #task-modal-content input[type="number"] {
+      width: 100%;
+      padding: 5px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #task-modal-content textarea {
+      resize: vertical;
+      height: 80px;
+    }
+    #task-modal-content .modal-buttons {
+      margin-top: 15px;
+      text-align: right;
+    }
+    #task-modal-content .modal-buttons button {
+      padding: 5px 10px;
+      margin-left: 5px;
+      border: none;
+      background-color: var(--primary);
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #task-modal-content .modal-buttons button:hover {
+      background-color: var(--primary-dark);
+    }
+  </style>
+</head>
+<body>
+  <div class="todo-container">
+    <!-- Settings menu toggle (top left) -->
+    <button id="settings-toggle" class="settings-toggle">Settings</button>
+    
+    <!-- Settings Menu -->
+    <div id="settings-menu" class="settings-menu">
+      <h3>Customize Settings</h3>
+      <!-- New: Color Scheme selector -->
+      <label for="color-scheme">Color Scheme:</label>
+      <select id="color-scheme">
+        <option value="default">Default</option>
+        <option value="neutral">Neutral</option>
+        <option value="ocean">Ocean</option>
+      </select>
+      <label>
+        Page Background:
+        <input type="color" id="page-bg-color" />
+      </label>
+      <label>
+        Container Background:
+        <input type="color" id="container-bg-color" />
+      </label>
+      <label>
+        <input type="checkbox" id="dark-mode-checkbox" /> Dark Mode
+      </label>
+      <button id="reset-colors">Reset Colors</button>
+      <button id="close-settings">Close</button>
+    </div>
+
+    <h1>To-Do List</h1>
+    <div class="todo-input">
+      <input type="text" id="todo-input" placeholder="Add a new task" />
+      <!-- New alarm input field -->
+      <input type="datetime-local" id="todo-alarm" placeholder="Set alarm (optional)" />
+      <button id="add-btn">Add Task</button>
+    </div>
+
+    <!-- Recurring Task Options -->
+    <div>
+      <label>
+        <input type="checkbox" id="recurring-checkbox" /> Recurring Task
+      </label>
+      <div id="recurring-options" class="recurring-options">
+        <label>
+          Start Date:
+          <input type="date" id="recurring-start" />
+        </label>
+        <label>
+          Frequency (days):
+          <input type="number" id="recurring-frequency-days" min="1" value="7" />
+        </label>
+        <label>
+          End Date:
+          <input type="date" id="recurring-end" />
+        </label>
+      </div>
+    </div>
+
+    <!-- Album selection and creation -->
+    <div class="album-controls">
+      <div>
+        <label for="album-select">Select Album:</label>
+        <select id="album-select"></select>
+      </div>
+      <div>
+        <label for="new-album-input">New Album:</label>
+        <input type="text" id="new-album-input" placeholder="Album name" />
+        <button id="add-album-btn">Add Album</button>
+      </div>
+    </div>
+
+    <!-- Existing filter buttons for status -->
+    <div class="filter-options">
+      <button data-filter="all" class="active">All</button>
+      <button data-filter="completed">Completed</button>
+      <button data-filter="pending">Pending</button>
+    </div>
+
+    <!-- Album filter dropdown -->
+    <div class="album-filter">
+      <label for="album-filter-select">Filter by Album:</label>
+      <select id="album-filter-select">
+        <option value="all">All Albums</option>
+      </select>
+    </div>
+    
+    <!-- New search bar -->
+    <input type="text" id="search-bar" class="search-bar" placeholder="Search tasks..." />
+    
+    <!-- New sort options dropdown -->
+    <select id="sort-options" class="sort-options">
+      <option value="creation">Sort by Creation Date</option>
+      <option value="alphabetical">Sort Alphabetically</option>
+      <option value="due">Sort by Due Date</option>
+    </select>
+
+    <ul id="todo-list"></ul>
+  </div>
+
+  <!-- Calendar placed at the bottom of the page -->
+  <div id="calendar"></div>
+
+  <!-- Modal for showing tasks for a day -->
+  <div id="modal">
+    <div id="modal-content">
+      <h3 id="modal-date"></h3>
+      <ul id="modal-task-list"></ul>
+      <button id="modal-close">Close</button>
+    </div>
+  </div>
+
+  <!-- Modal for Task Details (View and Edit Modes) -->
+  <div id="task-modal">
+    <div id="task-modal-content">
+      <h3 id="task-modal-title">Task Details</h3>
+      <label>
+        Task Text:
+        <input type="text" id="modal-task-text" />
+      </label>
+      <label>
+        Notes:
+        <textarea id="modal-task-notes" placeholder="Add notes..."></textarea>
+      </label>
+      <label>
+        Alarm Time:
+        <input type="datetime-local" id="modal-task-alarm" />
+      </label>
+      <label>
+        Album:
+        <select id="modal-task-album"></select>
+      </label>
+      <label>
+        Recurring:
+        <input type="checkbox" id="modal-task-recurring" />
+      </label>
+      <div id="modal-recurring-options" style="display:none; border:1px dashed #ccc; padding:5px; margin-top:5px;">
+        <label>
+          Start Date:
+          <input type="date" id="modal-recurring-start" />
+        </label>
+        <label>
+          Frequency (days):
+          <input type="number" id="modal-recurring-frequency-days" min="1" value="7" />
+        </label>
+        <label>
+          End Date:
+          <input type="date" id="modal-recurring-end" />
+        </label>
+      </div>
+      <div class="modal-buttons">
+        <button id="modal-save">Save</button>
+        <button id="modal-cancel">Cancel</button>
+        <button id="modal-close-details">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /***** Color Scheme Support *****/
+    // Define three color schemes.
+    const colorSchemes = {
+      default: {
+        pageBg: '#f4f4f4',
+        containerBg: '#fff',
+        primary: '#007bff',
+        primaryDark: '#0056b3',
+        accent: '#28a745',
+        accentDark: '#218838'
+      },
+      neutral: {
+        pageBg: '#f5f0e6',
+        containerBg: '#f0e1d2',
+        primary: '#a67c52',
+        primaryDark: '#8b5f3d',
+        accent: '#ffb6c1',
+        accentDark: '#ff8da7'
+      },
+      ocean: {
+        pageBg: '#e0f7fa',
+        containerBg: '#ffffff',
+        primary: '#0077be',
+        primaryDark: '#005f94',
+        accent: '#00a3a3',
+        accentDark: '#007575'
+      }
+    };
+
+    let selectedScheme = localStorage.getItem('selectedScheme') || 'default';
+    function applyColorScheme(schemeName) {
+      const scheme = colorSchemes[schemeName];
+      if (scheme) {
+        document.documentElement.style.setProperty('--page-bg', scheme.pageBg);
+        document.documentElement.style.setProperty('--container-bg', scheme.containerBg);
+        document.documentElement.style.setProperty('--primary', scheme.primary);
+        document.documentElement.style.setProperty('--primary-dark', scheme.primaryDark);
+        document.documentElement.style.setProperty('--accent', scheme.accent);
+        document.documentElement.style.setProperty('--accent-dark', scheme.accentDark);
+        // Update the individual color pickers to reflect the scheme's colors.
+        pageBgColorInput.value = scheme.pageBg;
+        containerBgColorInput.value = scheme.containerBg;
+      }
+    }
+    applyColorScheme(selectedScheme);
+    document.getElementById('color-scheme').addEventListener('change', (e) => {
+      selectedScheme = e.target.value;
+      applyColorScheme(selectedScheme);
+      localStorage.setItem('selectedScheme', selectedScheme);
+    });
+    /***** End Color Scheme Support *****/
+
+    /***** Existing To-Do List, Calendar, and Modal Code *****/
+    const todoInput = document.getElementById('todo-input');
+    const alarmInput = document.getElementById('todo-alarm');
+    const addBtn = document.getElementById('add-btn');
+    const todoList = document.getElementById('todo-list');
+    const filterButtons = document.querySelectorAll('.filter-options button');
+    const albumSelect = document.getElementById('album-select');
+    const newAlbumInput = document.getElementById('new-album-input');
+    const addAlbumBtn = document.getElementById('add-album-btn');
+    const albumFilterSelect = document.getElementById('album-filter-select');
+    const searchBar = document.getElementById('search-bar');
+    const sortSelect = document.getElementById('sort-options');
+    const settingsToggle = document.getElementById('settings-toggle');
+    const settingsMenu = document.getElementById('settings-menu');
+    const closeSettingsBtn = document.getElementById('close-settings');
+    const resetColorsBtn = document.getElementById('reset-colors');
+    const pageBgColorInput = document.getElementById('page-bg-color');
+    const containerBgColorInput = document.getElementById('container-bg-color');
+    const darkModeCheckbox = document.getElementById('dark-mode-checkbox');
+    const calendarDiv = document.getElementById('calendar');
+    const modal = document.getElementById('modal');
+    const modalContent = document.getElementById('modal-content');
+    const modalDate = document.getElementById('modal-date');
+    const modalTaskList = document.getElementById('modal-task-list');
+    const modalClose = document.getElementById('modal-close');
+    const recurringCheckbox = document.getElementById('recurring-checkbox');
+    const recurringOptions = document.getElementById('recurring-options');
+    const recurringStartInput = document.getElementById('recurring-start');
+    const recurringFrequencyDaysInput = document.getElementById('recurring-frequency-days');
+    const recurringEndInput = document.getElementById('recurring-end');
+    const taskModal = document.getElementById('task-modal');
+    const taskModalContent = document.getElementById('task-modal-content');
+    const modalTaskText = document.getElementById('modal-task-text');
+    const modalTaskNotes = document.getElementById('modal-task-notes');
+    const modalTaskAlarm = document.getElementById('modal-task-alarm');
+    const modalTaskAlbum = document.getElementById('modal-task-album');
+    const modalTaskRecurring = document.getElementById('modal-task-recurring');
+    const modalRecurringOptions = document.getElementById('modal-recurring-options');
+    const modalRecurringStart = document.getElementById('modal-recurring-start');
+    const modalRecurringFrequencyDays = document.getElementById('modal-recurring-frequency-days');
+    const modalRecurringEnd = document.getElementById('modal-recurring-end');
+    const modalSaveBtn = document.getElementById('modal-save');
+    const modalCancelBtn = document.getElementById('modal-cancel');
+    const modalCloseDetailsBtn = document.getElementById('modal-close-details');
+
+    let currentCalendarYear = new Date().getFullYear();
+    let currentCalendarMonth = new Date().getMonth();
+    let currentEditIndex = null;
+    let todos = JSON.parse(localStorage.getItem('todos')) || [];
+    let albums = JSON.parse(localStorage.getItem('albums')) || ['General'];
+    let draggingIndex = null;
+    let customColors = JSON.parse(localStorage.getItem('customColors')) || {
+      pageBg: getComputedStyle(document.documentElement).getPropertyValue('--page-bg').trim(),
+      containerBg: getComputedStyle(document.documentElement).getPropertyValue('--container-bg').trim()
+    };
+    let darkMode = JSON.parse(localStorage.getItem('darkMode')) || false;
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+      darkModeCheckbox.checked = true;
+    }
+
+    function formatLocalDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function addTask() {
+      const text = todoInput.value.trim();
+      if (text) {
+        const selectedAlbum = albumSelect.value;
+        const alarmTime = alarmInput.value ? new Date(alarmInput.value).toISOString() : null;
+        const created = new Date().toISOString();
+        let newTask = { text, completed: false, album: selectedAlbum, alarmTime, created, alarmTriggered: false };
+        if (recurringCheckbox.checked) {
+          const recurringStart = recurringStartInput.value;
+          const frequencyDays = parseInt(recurringFrequencyDaysInput.value, 10);
+          const recurringEnd = recurringEndInput.value || null;
+          newTask.isRecurring = true;
+          newTask.recurring = {
+            startDate: recurringStart,
+            frequencyDays: frequencyDays,
+            endDate: recurringEnd
+          };
+          if (!alarmTime) {
+            newTask.alarmTime = new Date(recurringStart + "T09:00").toISOString();
+          }
+        }
+        todos.push(newTask);
+        todoInput.value = '';
+        alarmInput.value = '';
+        recurringCheckbox.checked = false;
+        recurringOptions.style.display = 'none';
+        renderTodos();
+      }
+    }
+
+    recurringCheckbox.addEventListener('change', () => {
+      recurringOptions.style.display = recurringCheckbox.checked ? 'block' : 'none';
+    });
+
+    function applyCustomColors() {
+      document.documentElement.style.setProperty('--page-bg', customColors.pageBg);
+      document.documentElement.style.setProperty('--container-bg', customColors.containerBg);
+      pageBgColorInput.value = customColors.pageBg;
+      containerBgColorInput.value = customColors.containerBg;
+    }
+    applyCustomColors();
+
+    function saveData() {
+      localStorage.setItem('todos', JSON.stringify(todos));
+      localStorage.setItem('albums', JSON.stringify(albums));
+      localStorage.setItem('customColors', JSON.stringify(customColors));
+      localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    }
+
+    settingsToggle.addEventListener('click', () => { settingsMenu.style.display = 'block'; });
+    closeSettingsBtn.addEventListener('click', () => { settingsMenu.style.display = 'none'; });
+    pageBgColorInput.addEventListener('input', (e) => {
+      customColors.pageBg = e.target.value;
+      document.documentElement.style.setProperty('--page-bg', customColors.pageBg);
+      saveData();
+    });
+    containerBgColorInput.addEventListener('input', (e) => {
+      customColors.containerBg = e.target.value;
+      document.documentElement.style.setProperty('--container-bg', customColors.containerBg);
+      saveData();
+    });
+    resetColorsBtn.addEventListener('click', () => {
+      customColors = { ...defaultColors };
+      applyCustomColors();
+      saveData();
+    });
+    darkModeCheckbox.addEventListener('change', (e) => {
+      darkMode = e.target.checked;
+      if (darkMode) {
+        document.body.classList.add('dark-mode');
+      } else {
+        document.body.classList.remove('dark-mode');
+      }
+      saveData();
+    });
+
+    function populateAlbumDropdowns() {
+      albumSelect.innerHTML = '';
+      albumFilterSelect.innerHTML = '<option value="all">All Albums</option>';
+      modalTaskAlbum.innerHTML = "";
+      albums.forEach(album => {
+        const opt = document.createElement('option');
+        opt.value = album;
+        opt.textContent = album;
+        albumSelect.appendChild(opt);
+        const opt2 = document.createElement('option');
+        opt2.value = album;
+        opt2.textContent = album;
+        albumFilterSelect.appendChild(opt2);
+        const opt3 = document.createElement('option');
+        opt3.value = album;
+        opt3.textContent = album;
+        modalTaskAlbum.appendChild(opt3);
+      });
+    }
+
+    function getSortedFilteredTodos() {
+      const activeStatusFilter = document.querySelector('.filter-options button.active').dataset.filter;
+      const selectedAlbumFilter = albumFilterSelect.value;
+      const searchQuery = searchBar.value.trim().toLowerCase();
+      let filtered = todos.filter(todo => {
+        if (activeStatusFilter === 'completed' && !todo.completed) return false;
+        if (activeStatusFilter === 'pending' && todo.completed) return false;
+        if (selectedAlbumFilter !== 'all' && todo.album !== selectedAlbumFilter) return false;
+        if (searchQuery && !todo.text.toLowerCase().includes(searchQuery)) return false;
+        return true;
+      });
+      let sorted = filtered.slice();
+      switch(sortSelect.value) {
+        case 'creation':
+          sorted.sort((a, b) => new Date(a.created) - new Date(b.created));
+          break;
+        case 'alphabetical':
+          sorted.sort((a, b) => a.text.toLowerCase().localeCompare(b.text.toLowerCase()));
+          break;
+        case 'due':
+          sorted.sort((a, b) => {
+            if (a.alarmTime && b.alarmTime) {
+              return new Date(a.alarmTime) - new Date(b.alarmTime);
+            } else if (a.alarmTime) {
+              return -1;
+            } else if (b.alarmTime) {
+              return 1;
+            } else {
+              return 0;
+            }
+          });
+          break;
+        default:
+          break;
+      }
+      return sorted;
+    }
+
+    function getRealIndex(sortedTodos, filteredIndex) {
+      const task = sortedTodos[filteredIndex];
+      return todos.indexOf(task);
+    }
+
+    function renderTodos() {
+      const sortedTodos = getSortedFilteredTodos();
+      todoList.innerHTML = '';
+      sortedTodos.forEach((todo, index) => {
+        const li = document.createElement('li');
+        li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
+        li.setAttribute('draggable', 'true');
+        li.dataset.index = index;
+        const taskText = document.createElement('span');
+        taskText.textContent = todo.text;
+        // Clicking task text opens view-only details modal.
+        taskText.addEventListener('click', () => { openTaskModal(todo, false); });
+        const albumInfo = document.createElement('div');
+        albumInfo.className = 'task-album';
+        albumInfo.textContent = `Album: ${todo.album}`;
+        const albumSelectInline = document.createElement('select');
+        albums.forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a;
+          opt.textContent = a;
+          albumSelectInline.appendChild(opt);
+        });
+        albumSelectInline.value = todo.album;
+        albumSelectInline.addEventListener('change', () => {
+          const realIndex = getRealIndex(sortedTodos, index);
+          todos[realIndex].album = albumSelectInline.value;
+          renderTodos();
+        });
+        const alarmInfo = document.createElement('div');
+        alarmInfo.className = 'task-alarm';
+        if (todo.alarmTime) {
+          const alarmDate = new Date(todo.alarmTime);
+          alarmInfo.textContent = `Alarm: ${alarmDate.toLocaleString()}`;
+        } else {
+          alarmInfo.textContent = 'No alarm set';
+        }
+        if (todo.isRecurring) {
+          const recurringInfo = document.createElement('div');
+          recurringInfo.className = 'task-alarm';
+          recurringInfo.textContent = `Recurring: Every ${todo.recurring.frequencyDays} day(s), Starts: ${todo.recurring.startDate}${todo.recurring.endDate ? ', Ends: ' + todo.recurring.endDate : ''}`;
+          li.appendChild(recurringInfo);
+        }
+        const btnContainer = document.createElement('div');
+        btnContainer.className = 'buttons';
+        const completeBtn = document.createElement('button');
+        completeBtn.textContent = 'Complete';
+        completeBtn.className = 'complete';
+        completeBtn.addEventListener('click', () => {
+          const realIndex = getRealIndex(sortedTodos, index);
+          todos[realIndex].completed = !todos[realIndex].completed;
+          renderTodos();
+        });
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.className = 'edit';
+        // Clicking edit opens modal in editable mode.
+        editBtn.addEventListener('click', () => { openTaskModal(todo, true); });
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', () => {
+          const realIndex = getRealIndex(sortedTodos, index);
+          todos.splice(realIndex, 1);
+          renderTodos();
+        });
+        btnContainer.appendChild(completeBtn);
+        btnContainer.appendChild(editBtn);
+        btnContainer.appendChild(deleteBtn);
+        li.appendChild(taskText);
+        li.appendChild(albumInfo);
+        li.appendChild(albumSelectInline);
+        li.appendChild(alarmInfo);
+        li.appendChild(btnContainer);
+        li.addEventListener('dragstart', dragStart);
+        li.addEventListener('dragover', dragOver);
+        li.addEventListener('drop', drop);
+        li.addEventListener('dragend', dragEnd);
+        todoList.appendChild(li);
+      });
+      saveData();
+      renderCalendar();
+    }
+
+    function openTaskModal(task, editable) {
+      currentEditIndex = todos.indexOf(task);
+      modalTaskText.value = task.text || "";
+      modalTaskNotes.value = task.notes || "";
+      if (task.alarmTime) {
+        const dt = new Date(task.alarmTime);
+        modalTaskAlarm.value = dt.toISOString().substring(0,16);
+      } else {
+        modalTaskAlarm.value = "";
+      }
+      modalTaskAlbum.innerHTML = "";
+      albums.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a;
+        opt.textContent = a;
+        modalTaskAlbum.appendChild(opt);
+      });
+      modalTaskAlbum.value = task.album;
+      modalTaskRecurring.checked = !!task.isRecurring;
+      if (task.isRecurring && task.recurring) {
+        modalRecurringOptions.style.display = 'block';
+        modalRecurringStart.value = task.recurring.startDate || "";
+        modalRecurringFrequencyDays.value = task.recurring.frequencyDays || 7;
+        modalRecurringEnd.value = task.recurring.endDate || "";
+      } else {
+        modalRecurringOptions.style.display = 'none';
+        modalRecurringStart.value = "";
+        modalRecurringFrequencyDays.value = 7;
+        modalRecurringEnd.value = "";
+      }
+      modalTaskText.disabled = !editable;
+      modalTaskNotes.disabled = !editable;
+      modalTaskAlarm.disabled = !editable;
+      modalTaskAlbum.disabled = !editable;
+      modalTaskRecurring.disabled = !editable;
+      modalRecurringStart.disabled = !editable;
+      modalRecurringFrequencyDays.disabled = !editable;
+      modalRecurringEnd.disabled = !editable;
+      modalSaveBtn.style.display = editable ? 'inline-block' : 'none';
+      modalCancelBtn.style.display = editable ? 'inline-block' : 'none';
+      modalCloseDetailsBtn.style.display = editable ? 'none' : 'inline-block';
+      document.getElementById('task-modal-title').textContent = editable ? "Edit Task Details" : "Task Details";
+      taskModal.style.display = 'flex';
+    }
+
+    modalCancelBtn.addEventListener('click', () => {
+      taskModal.style.display = 'none';
+    });
+    modalSaveBtn.addEventListener('click', () => {
+      if (currentEditIndex !== null) {
+        todos[currentEditIndex].text = modalTaskText.value.trim();
+        todos[currentEditIndex].notes = modalTaskNotes.value.trim();
+        if (modalTaskAlarm.value) {
+          todos[currentEditIndex].alarmTime = new Date(modalTaskAlarm.value).toISOString();
+        } else {
+          todos[currentEditIndex].alarmTime = null;
+        }
+        todos[currentEditIndex].album = modalTaskAlbum.value;
+        if (modalTaskRecurring.checked) {
+          todos[currentEditIndex].isRecurring = true;
+          todos[currentEditIndex].recurring = {
+            startDate: modalRecurringStart.value,
+            frequencyDays: parseInt(modalRecurringFrequencyDays.value, 10),
+            endDate: modalRecurringEnd.value || null
+          };
+        } else {
+          todos[currentEditIndex].isRecurring = false;
+          delete todos[currentEditIndex].recurring;
+        }
+        taskModal.style.display = 'none';
+        renderTodos();
+      }
+    });
+    modalCloseDetailsBtn.addEventListener('click', () => {
+      taskModal.style.display = 'none';
+    });
+    taskModal.addEventListener('click', (e) => {
+      if (e.target === taskModal) {
+        taskModal.style.display = 'none';
+      }
+    });
+
+    function renderCalendar() {
+      const monthStart = new Date(currentCalendarYear, currentCalendarMonth, 1);
+      const startingDay = monthStart.getDay();
+      const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+      
+      let calendarHTML = `<div class="calendar-header">
+        <button id="prev-month">&lt;</button>
+        <h2>${monthStart.toLocaleString('default', { month: 'long' })} ${currentCalendarYear}</h2>
+        <button id="next-month">&gt;</button>
+      </div>`;
+      
+      calendarHTML += '<table><thead><tr>';
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      dayNames.forEach(day => { calendarHTML += `<th>${day}</th>`; });
+      calendarHTML += '</tr></thead><tbody>';
+      
+      let day = 1;
+      for (let i = 0; i < 6; i++) {
+        calendarHTML += '<tr>';
+        for (let j = 0; j < 7; j++) {
+          if (i === 0 && j < startingDay) {
+            calendarHTML += '<td></td>';
+          } else if (day > daysInMonth) {
+            calendarHTML += '<td></td>';
+          } else {
+            const cellDate = new Date(currentCalendarYear, currentCalendarMonth, day);
+            const cellDateString = formatLocalDate(cellDate);
+            const tasksForDay = todos.filter(task => {
+              if (task.alarmTime && !task.isRecurring) {
+                return formatLocalDate(new Date(task.alarmTime)) === cellDateString;
+              } else if (task.isRecurring) {
+                return isRecurringOccurrence(task, cellDate);
+              }
+              return false;
+            });
+            const today = new Date();
+            const todayString = formatLocalDate(today);
+            const todayClass = (cellDateString === todayString) ? 'today' : '';
+            calendarHTML += `<td class="${todayClass}" data-date="${cellDateString}"><strong>${day}</strong>`;
+            if (tasksForDay.length > 0) {
+              let tasksToShow = tasksForDay.slice(0, 2);
+              tasksToShow.forEach(task => {
+                calendarHTML += `<span class="task" title="${task.text}">${task.text}</span>`;
+              });
+              if (tasksForDay.length > 2) {
+                calendarHTML += `<span class="more-link" data-date="${cellDateString}">more...</span>`;
+              }
+            }
+            calendarHTML += '</td>';
+            day++;
+          }
+        }
+        calendarHTML += '</tr>';
+        if (day > daysInMonth) break;
+      }
+      calendarHTML += '</tbody></table>';
+      calendarDiv.innerHTML = calendarHTML;
+      
+      document.getElementById('prev-month').addEventListener('click', () => {
+        currentCalendarMonth--;
+        if (currentCalendarMonth < 0) { currentCalendarMonth = 11; currentCalendarYear--; }
+        renderCalendar();
+      });
+      document.getElementById('next-month').addEventListener('click', () => {
+        currentCalendarMonth++;
+        if (currentCalendarMonth > 11) { currentCalendarMonth = 0; currentCalendarYear++; }
+        renderCalendar();
+      });
+      
+      document.querySelectorAll('.more-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+          const date = e.target.getAttribute('data-date');
+          showModalForDate(date);
+          e.stopPropagation();
+        });
+      });
+      document.querySelectorAll('#calendar td[data-date]').forEach(cell => {
+        cell.addEventListener('click', (e) => {
+          if (e.target.tagName === 'TD' && cell.querySelectorAll('.task').length > 0) {
+            const date = cell.getAttribute('data-date');
+            showModalForDate(date);
+          }
+        });
+      });
+    }
+
+    function isRecurringOccurrence(task, cellDate) {
+      if (!task.isRecurring || !task.recurring) return false;
+      const startDate = new Date(task.recurring.startDate);
+      const endDate = task.recurring.endDate ? new Date(task.recurring.endDate) : null;
+      if (cellDate < startDate) return false;
+      if (endDate && cellDate > endDate) return false;
+      const frequencyDays = task.recurring.frequencyDays;
+      if (!frequencyDays || frequencyDays < 1) return false;
+      const diffDays = Math.floor((cellDate - startDate) / (1000 * 60 * 60 * 24));
+      return diffDays % frequencyDays === 0;
+    }
+
+    function renderCalendar() {
+      const monthStart = new Date(currentCalendarYear, currentCalendarMonth, 1);
+      const startingDay = monthStart.getDay();
+      const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+      
+      let calendarHTML = `<div class="calendar-header">
+        <button id="prev-month">&lt;</button>
+        <h2>${monthStart.toLocaleString('default', { month: 'long' })} ${currentCalendarYear}</h2>
+        <button id="next-month">&gt;</button>
+      </div>`;
+      
+      calendarHTML += '<table><thead><tr>';
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      dayNames.forEach(day => { calendarHTML += `<th>${day}</th>`; });
+      calendarHTML += '</tr></thead><tbody>';
+      
+      let day = 1;
+      for (let i = 0; i < 6; i++) {
+        calendarHTML += '<tr>';
+        for (let j = 0; j < 7; j++) {
+          if (i === 0 && j < startingDay) {
+            calendarHTML += '<td></td>';
+          } else if (day > daysInMonth) {
+            calendarHTML += '<td></td>';
+          } else {
+            const cellDate = new Date(currentCalendarYear, currentCalendarMonth, day);
+            const cellDateString = formatLocalDate(cellDate);
+            const tasksForDay = todos.filter(task => {
+              if (task.alarmTime && !task.isRecurring) {
+                return formatLocalDate(new Date(task.alarmTime)) === cellDateString;
+              } else if (task.isRecurring) {
+                return isRecurringOccurrence(task, cellDate);
+              }
+              return false;
+            });
+            const today = new Date();
+            const todayString = formatLocalDate(today);
+            const todayClass = (cellDateString === todayString) ? 'today' : '';
+            calendarHTML += `<td class="${todayClass}" data-date="${cellDateString}"><strong>${day}</strong>`;
+            if (tasksForDay.length > 0) {
+              let tasksToShow = tasksForDay.slice(0, 2);
+              tasksToShow.forEach(task => {
+                calendarHTML += `<span class="task" title="${task.text}">${task.text}</span>`;
+              });
+              if (tasksForDay.length > 2) {
+                calendarHTML += `<span class="more-link" data-date="${cellDateString}">more...</span>`;
+              }
+            }
+            calendarHTML += '</td>';
+            day++;
+          }
+        }
+        calendarHTML += '</tr>';
+        if (day > daysInMonth) break;
+      }
+      calendarHTML += '</tbody></table>';
+      calendarDiv.innerHTML = calendarHTML;
+      
+      document.getElementById('prev-month').addEventListener('click', () => {
+        currentCalendarMonth--;
+        if (currentCalendarMonth < 0) { currentCalendarMonth = 11; currentCalendarYear--; }
+        renderCalendar();
+      });
+      document.getElementById('next-month').addEventListener('click', () => {
+        currentCalendarMonth++;
+        if (currentCalendarMonth > 11) { currentCalendarMonth = 0; currentCalendarYear++; }
+        renderCalendar();
+      });
+      
+      document.querySelectorAll('.more-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+          const date = e.target.getAttribute('data-date');
+          showModalForDate(date);
+          e.stopPropagation();
+        });
+      });
+      document.querySelectorAll('#calendar td[data-date]').forEach(cell => {
+        cell.addEventListener('click', (e) => {
+          if (e.target.tagName === 'TD' && cell.querySelectorAll('.task').length > 0) {
+            const date = cell.getAttribute('data-date');
+            showModalForDate(date);
+          }
+        });
+      });
+    }
+
+    function showModalForDate(dateString) {
+      const tasksForDay = todos.filter(task => {
+        if (task.alarmTime && !task.isRecurring) {
+          return formatLocalDate(new Date(task.alarmTime)) === dateString;
+        } else if (task.isRecurring) {
+          return isRecurringOccurrence(task, new Date(dateString));
+        }
+        return false;
+      });
+      modalDate.textContent = `Tasks for ${dateString}`;
+      modalTaskList.innerHTML = '';
+      if (tasksForDay.length === 0) {
+        modalTaskList.innerHTML = '<li>No tasks due this day.</li>';
+      } else {
+        tasksForDay.forEach(task => {
+          const li = document.createElement('li');
+          li.textContent = task.text;
+          modalTaskList.appendChild(li);
+        });
+      }
+      modal.style.display = 'flex';
+    }
+
+    modalClose.addEventListener('click', () => { modal.style.display = 'none'; });
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+
+    function dragStart(e) {
+      draggingIndex = e.target.dataset.index;
+      e.target.classList.add('dragging');
+    }
+    function dragOver(e) {
+      e.preventDefault();
+      const draggingElement = document.querySelector('.dragging');
+      const targetElement = e.target.closest('.todo-item');
+      if (targetElement && targetElement !== draggingElement) {
+        const rect = targetElement.getBoundingClientRect();
+        const offset = e.clientY - rect.top;
+        if (offset > rect.height / 2) {
+          targetElement.after(draggingElement);
+        } else {
+          targetElement.before(draggingElement);
+        }
+      }
+    }
+    function drop(e) {
+      const sortedTodos = getSortedFilteredTodos();
+      const newFilteredIndex = Array.from(todoList.children).indexOf(e.target.closest('.todo-item'));
+      const realFromIndex = getRealIndex(sortedTodos, draggingIndex);
+      const realToIndex = getRealIndex(sortedTodos, newFilteredIndex);
+      const [draggedItem] = todos.splice(realFromIndex, 1);
+      todos.splice(realToIndex, 0, draggedItem);
+      renderTodos();
+    }
+    function dragEnd(e) {
+      e.target.classList.remove('dragging');
+      draggingIndex = null;
+    }
+
+    function checkAlarms() {
+      const now = new Date();
+      todos.forEach(task => {
+        if (task.alarmTime && !task.alarmTriggered) {
+          const alarmDate = new Date(task.alarmTime);
+          if (now >= alarmDate) {
+            const snooze = confirm(`Reminder: "${task.text}" is due!\nPress OK to snooze for 10 minutes or Cancel to dismiss.`);
+            if (snooze) {
+              const newAlarmDate = new Date(now.getTime() + 10 * 60 * 1000);
+              task.alarmTime = newAlarmDate.toISOString();
+              task.alarmTriggered = false;
+            } else {
+              if (task.isRecurring && task.recurring) {
+                const nextOccurrence = getNextOccurrence(alarmDate, task.recurring.frequencyDays);
+                if (task.recurring.endDate && nextOccurrence > new Date(task.recurring.endDate)) {
+                  task.isRecurring = false;
+                } else {
+                  task.alarmTime = nextOccurrence.toISOString();
+                  task.alarmTriggered = false;
+                }
+              } else {
+                task.alarmTriggered = true;
+              }
+            }
+            renderTodos();
+          }
+        }
+      });
+    }
+    setInterval(checkAlarms, 1000);
+
+    function getNextOccurrence(currentDate, frequencyDays) {
+      const next = new Date(currentDate);
+      next.setDate(next.getDate() + frequencyDays);
+      return next;
+    }
+
+    addBtn.addEventListener('click', addTask);
+    todoInput.addEventListener('keypress', e => { if (e.key === 'Enter') addTask(); });
+    filterButtons.forEach(button => button.addEventListener('click', () => renderTodos()));
+    albumFilterSelect.addEventListener('change', () => renderTodos());
+    searchBar.addEventListener('input', () => renderTodos());
+    sortSelect.addEventListener('change', () => renderTodos());
+    addAlbumBtn.addEventListener('click', () => {
+      const albumName = newAlbumInput.value.trim();
+      if (albumName && !albums.includes(albumName)) {
+        albums.push(albumName);
+        newAlbumInput.value = '';
+        populateAlbumDropdowns();
+        renderTodos();
+      }
+    });
+
+    populateAlbumDropdowns();
+    renderTodos();
+  </script>
+</body>
+</html>
